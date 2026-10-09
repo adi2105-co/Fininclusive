@@ -25,10 +25,11 @@ const pages={
 async dashboard(){
   loading();const [s,l]=await Promise.all([api('/me/score'),api('/me/lenders')]);const m=s.metrics,e=s.eligibility;
   const top=l.lenders.filter(x=>x.eligible).slice(0,3);
-  view.innerHTML=`<div class="top"><div><h1>Hello, ${esc(ME.name.split(' ')[0])} 👋</h1><p>Here's where your credit stands today.</p></div><a class="btn" href="#/earnings">+ Log today's earnings</a></div>
+  view.innerHTML=`<div class="top"><div><h1>Hello, ${esc(ME.name.split(' ')[0])} 👋</h1><p><span class="live"><i></i>Live scoring</span>&nbsp; Here's where your credit stands today.</p></div><a class="btn" href="#/earnings">+ Log today's earnings</a></div>
   ${!m.hasData?`<div class="alert dev">You haven't logged any earnings in the last 90 days. <a href="#/earnings"><b>Add some</b></a> to build an accurate score.</div>`:''}
+  <div data-ad-slot></div>
   <div class="grid g3" style="margin-bottom:18px"><div class="card gauge"><div class="kpi"><div class="l">Your credit score</div></div>${gauge(s.score,s.band)}<div>${riskPill(s.risk)}</div><p class="hint">Updated just now · range 300-850</p></div>
-  <div style="grid-column:span 2" class="grid g2"><div class="card kpi"><div class="l">Avg monthly income</div><div class="v">${inr(m.income)}</div><div class="s">${m.jobs} jobs/month · ${m.hours} hrs/week</div></div>
+  <div style="grid-column:span 2" class="grid g2"><div class="card kpi"><div class="l">Avg monthly income</div><div class="v">${inr(m.income)}</div><div class="s">${m.jobs} jobs/month · ${m.hours} hrs/week</div>${typeof spark==='function'?`<div class="kspark">${spark(s.weekly)}</div>`:''}</div>
   <div class="card kpi"><div class="l">Max eligible loan</div><div class="v" style="color:var(--pri)">${inr(e.maxLoan)}</div><div class="s">at ~${e.rate}% · EMI up to ${inr(e.maxEmi)}</div></div>
   <div class="card kpi"><div class="l">Debt-to-income</div><div class="v">${Math.round(m.dti*100)}%</div><div class="s">${m.dti<.2?'Healthy':m.dti<.4?'Manageable':'High - try reducing'}</div></div>
   <div class="card kpi"><div class="l">Avg platform rating</div><div class="v">${m.rating?m.rating+' ★':'—'}</div><div class="s">${m.weeks} weeks of data</div></div></div></div>
@@ -42,10 +43,14 @@ async dashboard(){
 async earnings(){
   loading();const rows=await api('/me/earnings');const today=new Date().toISOString().slice(0,10);
   const last30=rows.filter(r=>Date.now()-new Date(r.date)<=30*864e5);const tot=last30.reduce((a,r)=>a+r.income,0);
+  const plat={};last30.forEach(r=>{const o=plat[r.platform]=plat[r.platform]||{t:0,d:0};o.t+=r.income;o.d++;});
+  const day7=p=>{const out=[];for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*864e5).toISOString().slice(0,10);out.push(rows.filter(r=>r.platform===p&&r.date===d).reduce((a,r)=>a+r.income,0));}return out;};
+  const platRows=Object.entries(plat).sort((a,b)=>b[1].t-a[1].t);
   view.innerHTML=`<div class="top"><div><h1>Earnings tracker</h1><p>Every logged day makes your score more accurate.</p></div></div>
   <div class="grid g3" style="margin-bottom:18px"><div class="card kpi"><div class="l">Last 30 days</div><div class="v">${inr(tot)}</div><div class="s">${last30.length} days worked</div></div>
   <div class="card kpi"><div class="l">Daily average</div><div class="v">${inr(last30.length?tot/last30.length:0)}</div><div class="s">on working days</div></div>
   <div class="card kpi"><div class="l">Total records</div><div class="v">${rows.length}</div><div class="s">all time</div></div></div>
+  ${platRows.length?`<div class="card tw" style="margin-bottom:18px"><h3 style="margin-bottom:6px">Where your income comes from <span class="hint">· last 30 days</span></h3><table><thead><tr><th>Platform / work</th><th>Income</th><th>Days</th><th>Avg / day</th><th>7-day trend</th></tr></thead><tbody>${platRows.map(([k,v])=>`<tr><td><b style="font-family:inherit">${esc(k)}</b></td><td><b>${inr(v.t)}</b></td><td>${v.d}</td><td>${inr(v.t/v.d)}</td><td class="sparkcell">${typeof spark==='function'?spark(day7(k)):''}</td></tr>`).join('')}</tbody></table></div>`:''}
   <div class="grid" style="grid-template-columns:minmax(280px,380px) 1fr;align-items:start"><form class="card" id="ef"><h3 style="margin-bottom:16px">Add a day</h3>
   <div class="field"><label>Date</label><input type="date" id="d" value="${today}" max="${today}" required></div>
   <div class="field"><label>Platform / work</label><select id="p">${PLATFORMS.map(p=>`<option>${p}</option>`).join('')}</select></div>
@@ -92,6 +97,7 @@ async loans(){
     $$('.fchip').forEach(c=>c.classList.toggle('on',c.dataset.f===f));};
   view.innerHTML=`<div class="top"><div><h1>Loan marketplace</h1><p>Real lenders & schemes, matched to your score of <b>${d.score}</b>. You can borrow up to <b style="color:var(--pri)">${inr(d.eligibility.maxLoan)}</b>.</p></div>
   <select id="sort" style="width:auto"><option value="match">Sort: Best match</option><option value="rate">Sort: Lowest rate</option><option value="amount">Sort: Highest amount</option></select></div>
+  <div data-ad-slot></div>
   <div class="filters"><button class="fchip" data-f="all">All (${d.lenders.length})</button><button class="fchip" data-f="eligible">✓ Eligible (${d.lenders.filter(l=>l.eligible).length})</button>${types.map(t=>`<button class="fchip" data-f="${esc(t)}">${esc(t)}</button>`).join('')}</div>
   <div class="grid g3" id="ll"></div><p class="hint" style="margin-top:20px">Rates and limits are indicative from each lender's public information. Final approval, pricing and terms are decided by the lender - confirm on their official site.</p>`;
   $$('.fchip').forEach(c=>c.onclick=()=>{f=c.dataset.f;draw();});$('#sort').onchange=e=>{sort=e.target.value;draw();};draw();
