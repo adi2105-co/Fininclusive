@@ -1,0 +1,10 @@
+{
+  "name": "fininclusive",
+  "version": "1.0.0",
+  "description": "FinInclusive - alternative credit scoring & loan discovery for informal economy workers",
+  "scripts": {
+    "setup": "npm --prefix server install",
+    "start": "npm --prefix server start",
+    "dev": "npm --prefix server run dev"
+  }
+}
