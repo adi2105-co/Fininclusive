@@ -4,3 +4,10 @@ server/storage/
 *.log
 server/.env
 server/node_modules/
+.env
+.env.*
+!.env.example
+node_modules/
+storage/*.db
+storage/*.db-shm
+storage/*.db-wal

@@ -1,0 +1,55 @@
+Bro, don't worry 😂❤️ If sir says, “Start the project from VS Code and show me how it works,” we can run FinInclusive locally. You don't need to deploy it again.
+
+## How to start FinInclusive from VS Code
+
+### Step 1 — Open your project
+
+Open VS Code and open this folder:
+
+`C:\Users\Aditya Singh\FinInclusive2c\fininclusive`
+
+### Step 2 — Open the terminal
+
+In VS Code, click Terminal → New Terminal.
+
+### Step 3 — Start the backend
+
+Copy and run this command:
+
+PowerShell
+
+```
+npm --prefix server start
+```
+
+This starts your Express backend, which connects to your Neon PostgreSQL database using your local environment configuration.
+
+Wait until you see a message indicating that the database is ready and the server is running.
+
+### Step 4 — Open the website
+
+Open your browser and visit:
+
+[http://localhost:5000](http://localhost:5000)
+
+Your FinInclusive website should appear, assuming the server starts successfully.
+
+### Step 5 — Demonstrate the project to sir
+
+You can show him:
+
+* Dashboard and credit score
+
+* Earnings and income tracking
+
+* Loan marketplace
+
+* User registration and login
+
+* PostgreSQL-backed data, once verified
+
+Important: Keep the VS Code terminal running while demonstrating the project. Press `Ctrl + C` in the terminal when you want to stop the server.
+
+Your deployed Vercel website and your local VS Code version are separate ways to access the same project code. You can demonstrate locally without making another deployment.
+
+One thing to remember, bro: your `.env` file must exist locally with the correct database credentials, and your local server must start without errors.
