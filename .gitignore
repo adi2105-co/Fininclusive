@@ -2,3 +2,5 @@ node_modules/
 .env
 server/storage/
 *.log
+server/.env
+server/node_modules/
