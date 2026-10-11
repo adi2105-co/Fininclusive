@@ -229,6 +229,36 @@
     const bm = Math.max(1, ...bins.map(b => b.n));
     view.insertAdjacentHTML('beforeend', '<section class="card fx-hist" data-fx style="margin-top:18px"><div class="fx-head"><div><h3>Where your workers score</h3><p class="hint">Number of workers in each 50-point band. ' + ws.length + ' verified workers.</p></div></div><div class="fx-bars">' +
       bins.map(b => '<div class="fx-col" title="' + b.lo + '-' + (b.lo + 49) + ': ' + b.n + ' workers"><b>' + (b.n || '') + '</b><i class="' + (b.lo >= 700 ? 'g' : b.lo >= 600 ? 'y' : 'r') + '" style="height:' + Math.max(b.n ? 6 : 2, b.n / bm * 100) + '%"></i><span>' + b.lo + '</span></div>').join('') + '</div></section>');
+    teamCard();
+  }
+
+  /* banker team: see the bankers and add a new one (needs the /admin/bankers routes) */
+  async function teamCard() {
+    view.insertAdjacentHTML('beforeend', '<section class="card fx-team" data-fx style="margin-top:18px"><div class="fx-head"><div><h3>Banker team</h3><p class="hint">Bankers can review loans and see every worker. Add a colleague here.</p></div><span class="pill info" id="fxTc"></span></div>' +
+      '<div class="fx-teamgrid"><div id="fxTl" class="fx-tlist"><div class="empty">Loading...</div></div>' +
+      '<form id="fxTf" class="fx-tform" autocomplete="off"><h4>Add a banker</h4><div id="fxTm"></div>' +
+      '<div class="field"><label for="fxTn">Full name</label><input id="fxTn" required minlength="2" placeholder="Meera Shah"></div>' +
+      '<div class="field"><label for="fxTe">Work email</label><input id="fxTe" type="email" required placeholder="meera@bank.com"></div>' +
+      '<div class="field"><label for="fxTp">Temporary password</label><input id="fxTp" type="text" required minlength="8" placeholder="Min 8 chars, Aa + 123" autocomplete="new-password"></div>' +
+      '<button class="btn block" type="submit">Create banker account</button></form></div></section>');
+    const list = q('#fxTl'), msg = q('#fxTm');
+    const paint = async () => {
+      try {
+        const rows = await api('/admin/bankers');
+        q('#fxTc').textContent = rows.length + ' banker' + (rows.length === 1 ? '' : 's');
+        list.innerHTML = rows.map(b => '<div class="fx-trow"><span class="fx-av">' + esc((b.name || '?').trim().charAt(0).toUpperCase()) + '</span><div><b>' + esc(b.name) + '</b><small>' + esc(b.email) + '</small></div><span class="hint">' + (b.last_login ? 'last seen ' + ago(b.last_login) : 'never signed in') + '</span></div>').join('');
+      } catch (e) { list.innerHTML = '<div class="empty">Could not load the team.</div>'; }
+    };
+    paint();
+    q('#fxTf').addEventListener('submit', async ev => {
+      ev.preventDefault(); const form = ev.currentTarget, btn = form.querySelector('button'); btn.disabled = true; msg.innerHTML = '';
+      try {
+        await api('/admin/bankers', { method: 'POST', body: { name: q('#fxTn').value, email: q('#fxTe').value, password: q('#fxTp').value } });
+        msg.innerHTML = '<div class="alert ok">Banker added. They can sign in now with that email and password.</div>';
+        form.reset(); paint();
+      } catch (e) { msg.innerHTML = '<div class="alert err">' + esc(e.message) + '</div>'; }
+      btn.disabled = false;
+    });
   }
 
   function adminWorkers(top) {
