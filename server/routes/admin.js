@@ -1,5 +1,5 @@
-
 const router = require('express').Router();
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { auth, adminOnly } = require('../lib/middleware');
 const { computeScore } = require('../lib/scoring');
@@ -161,6 +161,50 @@ router.patch('/loans/:id', wrap(async (req, res) => {
   }
 
   res.json({ ok: true });
+}));
+
+/* ---- banker team: list bankers and let an existing banker add another ---- */
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const strongPw = p =>
+  typeof p === 'string' && p.length >= 8 &&
+  /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p);
+
+router.get('/bankers', wrap(async (req, res) => {
+  const rows = await db.prepare(
+    "SELECT id, name, email, created_at, last_login FROM users WHERE role='admin' ORDER BY id"
+  ).all();
+  res.json(rows);
+}));
+
+router.post('/bankers', wrap(async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = req.body.password;
+
+  if (name.length < 2) {
+    return res.status(400).json({ error: 'Enter the banker\'s full name.' });
+  }
+  if (!emailRe.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+  if (!strongPw(password)) {
+    return res.status(400).json({
+      error: 'Password needs 8+ characters with upper-case, lower-case and a number.'
+    });
+  }
+
+  const existing = await db.prepare('SELECT id FROM users WHERE email=?').get(email);
+  if (existing) {
+    return res.status(409).json({ error: 'An account with this email already exists.' });
+  }
+
+  const created = await db.prepare(
+    `INSERT INTO users (name, email, password_hash, role, verified, consent_at)
+     VALUES (?,?,?,'admin',1,CURRENT_TIMESTAMP) RETURNING id`
+  ).get(name, email, bcrypt.hashSync(password, 12));
+
+  await db.audit(req.user.id, `banker_added:${created.id}`, req.ip);
+  res.json({ ok: true, id: created.id });
 }));
 
 module.exports = router;
