@@ -24,7 +24,7 @@
   let panel = null;
   if (page === 'register') {
     panel = document.createElement('div'); panel.className = 'fx-bankpanel'; panel.hidden = true;
-    panel.innerHTML = '<p>Banker and lender accounts are created by the FinInclusive administrator, so there is no public sign-up for them.</p><a class="btn block" href="/login.html?role=banker">Sign in as a banker →</a>';
+    panel.innerHTML = '<p>Banker accounts are not open to the public. An existing banker adds you from the banker portal (Overview → Banker team), then you sign in here.</p><a class="btn block" href="/login.html?role=banker">Sign in as a banker →</a>';
     form.parentNode.insertBefore(panel, form);
   }
 
