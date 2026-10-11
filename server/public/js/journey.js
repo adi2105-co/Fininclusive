@@ -32,7 +32,7 @@ Journey · JS
  
   /* ---------- world ---------- */
   const SMALL = Math.min(innerWidth, innerHeight) < 600;
-  const TRAVEL = 1000, NEAR = 1.2, FAR = 560;
+  const TRAVEL = 2200, NEAR = 1.2, FAR = 560;
   const SCENES = [0, 0.2, 0.42, 0.64, 0.84];
   const GATES = [
     { p: 0.2, t: '1  Verify your email' },
@@ -282,7 +282,7 @@ Journey · JS
     ctx.clearRect(0, 0, W, H);
     drawSky(t, p); drawGround(); drawRoad(t); drawBank();
     for (const b of buildings) drawBuilding(b);
-    drawGates(t); drawCoins(t); drawDust(t);
+    drawGates(t); drawCoins(t); drawDust(t); drawSpeed(vel);
     ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
   }
  
