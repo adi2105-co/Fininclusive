@@ -1,5 +1,3 @@
-
-Journey · JS
 /* FinInclusive · 3D scroll journey (landing page only)
  * Scrolling flies a camera down a road through a town that lights up as the story
  * moves from "invisible to banks" to "approved". Plain Canvas 2D with its own
@@ -13,7 +11,7 @@ Journey · JS
   const canvas = root.querySelector('.j-canvas');
   const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
   if (!pin || !ctx) return;
- 
+
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const panels = [...root.querySelectorAll('.j-panel')];
@@ -21,7 +19,7 @@ Journey · JS
   const bar = root.querySelector('.j-progress i');
   const scoreEl = root.querySelector('[data-j-score]');
   const barEls = [...root.querySelectorAll('[data-j-bar]')];
- 
+
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -29,7 +27,7 @@ Journey · JS
   const rgb = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a == null ? 1 : a) + ')';
   function rng(seed) { let a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   function hash(a, b, c) { let h = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 2147483647)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
- 
+
   /* ---------- world ---------- */
   const SMALL = Math.min(innerWidth, innerHeight) < 600;
   const TRAVEL = 2200, NEAR = 1.2, FAR = 560;
@@ -56,21 +54,23 @@ Journey · JS
   const dust = []; for (let i = 0; i < (SMALL ? 60 : 110); i++) dust.push({ x: (R() - 0.5) * 30, y: R() * 9, z: R() * 300 });
   const stars = []; for (let i = 0; i < 90; i++) stars.push({ x: R(), y: R() * 0.55, a: R() });
   const skyline = []; for (let i = 0; i < 46; i++) skyline.push({ x: i / 46 + R() * 0.01, w: 0.012 + R() * 0.03, h: 0.03 + R() * 0.13 });
- 
+
+  /* floating market boards: little candlestick charts beside the road */
+  const BOARDS = []; for (let i = 0; i < 16; i++) { const side = i % 2 ? 1 : -1; BOARDS.push({ z: 90 + i * 135 + R() * 40, x: side * (7.4 + R() * 2.6), y: 4.6 + R() * 2.8, w: 5.2 + R() * 1.6, seed: i + 3 }); }
   const SKY_A = [4, 9, 22], SKY_B = [9, 38, 66];
   const HOR_A = [14, 28, 50], HOR_B = [26, 112, 118], HOR_C = [236, 170, 104];
   function palette(p) {
     const t = sstep(0.05, 0.7, p), w = sstep(0.72, 1, p);
     return { top: mixc(SKY_A, SKY_B, t), hor: mixc(mixc(HOR_A, HOR_B, t), HOR_C, w * 0.5) };
   }
- 
+
   /* ---------- state ---------- */
   let W = 0, H = 0, DPR = 1, F = 1, vig = null;
   let target = 0, prog = 0, vel = 0, mx = 0, my = 0, tmx = 0, tmy = 0;
   let raf = 0, running = false, scene = -1, scoreTimer = 0, scoreShown = false;
   let slow = false, ft = [], lastNow = 0;
   const t0 = performance.now();
- 
+
   function resize() {
     const r = pin.getBoundingClientRect();
     DPR = Math.min(window.devicePixelRatio || 1, slow || SMALL ? 1.15 : 1.5);
@@ -81,17 +81,17 @@ Journey · JS
     vig = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.78);
     vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(2,6,14,.62)');
   }
- 
+
   function readScroll() {
     const r = root.getBoundingClientRect(), span = r.height - innerHeight;
     target = span > 0 ? clamp(-r.top / span, 0, 1) : 0;
   }
- 
+
   /* ---------- drawing ---------- */
   let camZ = 0, camX = 0, camY = 1.75, cy = 0, cxp = 0, f = 1, pal = null, lit = 0;
-  const fog = dz => { const t = clamp((dz - 18) / 430, 0, 1); return Math.pow(t, 0.9); };
+  const fog = dz => { const t = clamp((dz - 24) / 560, 0, 1); return Math.pow(t, 0.9); };
   const shade = (c, fg, k) => rgb(mixc([c[0] * (k || 1), c[1] * (k || 1), c[2] * (k || 1)], pal.hor, fg));
- 
+
   function drawSky(t, p) {
     const g = ctx.createLinearGradient(0, 0, 0, cy);
     g.addColorStop(0, rgb(pal.top)); g.addColorStop(1, rgb(pal.hor));
@@ -110,6 +110,18 @@ Journey · JS
     // distant skyline: moves a little with the pointer
     ctx.fillStyle = rgb(mixc(pal.hor, [8, 18, 34], 0.45), 0.9);
     for (const b of skyline) { const x = ((b.x * W - camX * 6) % (W + 80) + W + 80) % (W + 80) - 40; ctx.fillRect(x, cy - b.h * H, b.w * W, b.h * H + 2); }
+    // glowing market trend line rising across the sky as the story moves on
+    const tl = clamp(0.25 + p * 0.9, 0, 1), ty0 = cy - H * 0.06, rise = H * (0.14 + 0.22 * p);
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i <= 60; i++) {
+      const u = i / 60; if (u > tl) break;
+      const x = u * W - camX * 10, y = ty0 - u * rise - Math.sin(u * 22 + t * 0.6) * H * 0.012 - Math.sin(u * 7 + 1) * H * 0.02;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(94,234,212,.12)'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.strokeStyle = 'rgba(134,239,172,' + (0.35 + 0.35 * p) + ')'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
     // beacon above the bank
     const k = f / Math.max(60, TRAVEL + 70 - camZ);
     const bx = cxp - camX * k * 0.0 + (0 - camX) * k, bw = Math.max(2, 3.4 * k);
@@ -117,13 +129,13 @@ Journey · JS
     bg.addColorStop(0, 'rgba(94,234,212,0)'); bg.addColorStop(1, rgb([140, 255, 232], 0.1 + 0.28 * lit));
     ctx.fillStyle = bg; ctx.fillRect(bx - bw / 2, 0, bw, cy);
   }
- 
+
   function drawGround() {
     const g = ctx.createLinearGradient(0, cy, 0, H);
     g.addColorStop(0, rgb(mixc(pal.hor, [10, 18, 34], 0.55))); g.addColorStop(1, 'rgb(7,12,24)');
     ctx.fillStyle = g; ctx.fillRect(0, cy, W, H - cy);
   }
- 
+
   function quadZ(x0, x1, za, zb, yy, fill) {
     const ka = f / (za - camZ), kb = f / (zb - camZ);
     ctx.fillStyle = fill; ctx.beginPath();
@@ -131,7 +143,7 @@ Journey · JS
     ctx.lineTo(cxp + (x1 - camX) * kb, cy + (camY - yy) * kb); ctx.lineTo(cxp + (x0 - camX) * kb, cy + (camY - yy) * kb);
     ctx.closePath(); ctx.fill();
   }
- 
+
   function drawRoad(t) {
     const za = camZ + NEAR, zb = camZ + FAR, hw = 4.2;
     const g = ctx.createLinearGradient(0, cy, 0, H);
@@ -152,7 +164,7 @@ Journey · JS
       quadZ(-0.09, 0.09, Math.max(z, camZ + NEAR), z + 3.4, 0.01, 'rgba(190,255,240,' + a + ')');
     }
   }
- 
+
   function windowsFront(b, L, k, fg) {
     const cols = Math.max(2, Math.floor(b.w / 1.9)), rows = Math.max(3, Math.floor((b.h - 1.5) / 2.3));
     const bodyH = b.h - 1.5, cw = b.w / cols, rh = bodyH / rows, ww = cw * 0.46 * k, wh = rh * 0.42 * k;
@@ -164,7 +176,7 @@ Journey · JS
     }
     ctx.globalAlpha = (1 - fg) * 0.9; ctx.fillStyle = 'rgb(94,234,212)'; ctx.fill(teal); ctx.fillStyle = 'rgb(255,196,98)'; ctx.fill(amber); ctx.globalAlpha = 1;
   }
- 
+
   function windowsSide(b, L, xi, fg) {
     const cols = Math.max(2, Math.floor(b.d / 1.9)), rows = Math.max(3, Math.floor((b.h - 1.5) / 2.3));
     const bodyH = b.h - 1.5, rh = bodyH / rows, cd = b.d / cols;
@@ -180,26 +192,53 @@ Journey · JS
     }
     ctx.globalAlpha = (1 - fg) * 0.85; ctx.fillStyle = 'rgb(94,234,212)'; ctx.fill(teal); ctx.fillStyle = 'rgb(255,196,98)'; ctx.fill(amber); ctx.globalAlpha = 1;
   }
- 
+
   function drawBuilding(b) {
     const z0 = b.z, z1 = b.z + b.d;
     if (z1 < camZ + NEAR + 0.5 || z0 - camZ > FAR) return;
     const L = clamp(lit + b.off, 0, 1), dz0 = z0 - camZ, fg = fog(Math.max(dz0, NEAR));
-    const c = mixc(mixc([26, 38, 62], [18, 64, 86], L), [44, 62, 92], b.tint * 0.25);
+    const c = mixc(mixc([40, 58, 92], [26, 96, 120], L), [58, 80, 116], b.tint * 0.25);
     const xi = b.s < 0 ? b.x + b.w / 2 : b.x - b.w / 2;
     const za = Math.max(z0, camZ + NEAR), ka = f / (za - camZ), kb = f / (z1 - camZ);
     const xa = cxp + (xi - camX) * ka, xb = cxp + (xi - camX) * kb;
     ctx.fillStyle = shade(c, fg, 0.78); ctx.beginPath();
     ctx.moveTo(xa, cy + camY * ka); ctx.lineTo(xa, cy - (b.h - camY) * ka); ctx.lineTo(xb, cy - (b.h - camY) * kb); ctx.lineTo(xb, cy + camY * kb); ctx.closePath(); ctx.fill();
-    if (!slow && ka > 2.4) windowsSide(b, L, xi, fg);
+    if (ka > (slow ? 4.5 : 2.4)) windowsSide(b, L, xi, fg);
     if (dz0 > NEAR) {
       const k = f / dz0, x1 = cxp + (b.x - b.w / 2 - camX) * k, x2 = cxp + (b.x + b.w / 2 - camX) * k, yb = cy + camY * k, yt = cy - (b.h - camY) * k;
       ctx.fillStyle = shade(c, fg, 1); ctx.fillRect(x1, yt, x2 - x1, yb - yt);
-      if (!slow && k > 3.2) windowsFront(b, L, k, fg);
-      if (L > 0.45 && fg < 0.8) { ctx.strokeStyle = 'rgba(94,234,212,' + 0.28 * L * (1 - fg) + ')'; ctx.lineWidth = 1; ctx.strokeRect(x1, yt, x2 - x1, yb - yt); }
+      if (k > (slow ? 5 : 3.2)) windowsFront(b, L, k, fg);
+      if (fg < 0.85) { ctx.strokeStyle = 'rgba(94,234,212,' + (0.18 + 0.4 * L) * (1 - fg) + ')'; ctx.lineWidth = 1; ctx.strokeRect(x1, yt, x2 - x1, yb - yt); }
     }
   }
- 
+
+  function drawBoards(t) {
+    for (const b of BOARDS) {
+      const dz = b.z - camZ; if (dz < NEAR + 8 || dz > 420) continue;
+      const k = f / dz, fg = fog(dz), a = clamp((1 - fg) * (0.45 + 0.55 * lit), 0, 1); if (a < 0.04) continue;
+      const w = b.w * k, h = w * 0.58, x = cxp + (b.x - camX) * k - w / 2, y = cy + (camY - b.y) * k - h / 2;
+      if (x > W || x + w < 0 || w < 12) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(5,18,36,.78)'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(94,234,212,.75)'; ctx.lineWidth = Math.max(1, w * 0.012); ctx.strokeRect(x, y, w, h);
+      if (w > 46) {
+        const n = 9, cw = w * 0.075, pad = w * 0.09; let v = 0.5;
+        ctx.strokeStyle = 'rgba(94,234,212,.12)'; ctx.lineWidth = 1; ctx.beginPath();
+        for (let g = 1; g < 4; g++) { ctx.moveTo(x + pad * 0.5, y + h * g / 4); ctx.lineTo(x + w - pad * 0.5, y + h * g / 4); } ctx.stroke();
+        for (let i = 0; i < n; i++) {
+          const o = v, d = (hash(b.seed, i, 7) - 0.38) * 0.2; v = clamp(v + d, 0.12, 0.88);
+          let c = v; if (i === n - 1) c = clamp(v + Math.sin(t * 1.4 + b.seed) * 0.04, 0.1, 0.9);
+          const up = c >= o, cx = x + pad + (w - pad * 2) * (i + 0.5) / n, top = y + h * (1 - Math.max(o, c)) * 0.82 + h * 0.09, bot = y + h * (1 - Math.min(o, c)) * 0.82 + h * 0.09;
+          ctx.fillStyle = ctx.strokeStyle = up ? '#4ade80' : '#f87171'; ctx.lineWidth = Math.max(1, cw * 0.14);
+          ctx.beginPath(); ctx.moveTo(cx, top - h * 0.05); ctx.lineTo(cx, bot + h * 0.05); ctx.stroke();
+          ctx.fillRect(cx - cw / 2, top, cw, Math.max(h * 0.07, bot - top));
+        }
+      }
+      if (w > 90) { ctx.fillStyle = '#86efac'; ctx.font = '800 ' + w * 0.07 + 'px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('▲ ' + (1.2 + hash(b.seed, 2, 2) * 3.4).toFixed(1) + '%', x + w * 0.06, y + h * 0.05); }
+      ctx.globalAlpha = 1;
+    }
+  }
+
   function drawBank() {
     const z = TRAVEL + 70, dz = z - camZ; if (dz < NEAR || dz > 1900) return;
     const k = f / dz, fg = fog(dz) * 0.8, bw = 36, bh = 15;
@@ -219,7 +258,7 @@ Journey · JS
     ctx.fillStyle = shade([245, 197, 66], fg * 0.5, 1); ctx.beginPath(); ctx.arc(ex, ey, er, 0, 6.2832); ctx.fill();
     if (er > 9) { ctx.fillStyle = '#5b3d00'; ctx.font = '800 ' + er * 1.2 + 'px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('₹', ex, ey + er * 0.06); }
   }
- 
+
   function drawGates(t) {
     for (const g of GATES) {
       const z = g.p * TRAVEL, dz = z - camZ; if (dz < NEAR + 2 || dz > FAR) continue;
@@ -240,7 +279,7 @@ Journey · JS
       }
     }
   }
- 
+
   function drawCoins(t) {
     const vis = clamp(0.12 + lit * 1.1, 0, 1);
     for (const c of coins) {
@@ -256,7 +295,7 @@ Journey · JS
     }
     ctx.globalAlpha = 1;
   }
- 
+
   function drawDust(t) {
     ctx.fillStyle = '#cfeee8';
     for (const d of dust) {
@@ -267,14 +306,14 @@ Journey · JS
     }
     ctx.globalAlpha = 1;
   }
- 
+
   function drawSpeed(v) {
     const a = clamp(Math.abs(v) * 0.9 - 0.08, 0, 0.5); if (a < 0.02 || slow) return;
     ctx.strokeStyle = 'rgba(190,255,240,' + a + ')'; ctx.lineWidth = 1.2; ctx.beginPath();
     for (let i = 0; i < 18; i++) { const ang = hash(i, 9, 3) * 6.2832, r1 = Math.min(W, H) * (0.3 + hash(i, 5, 1) * 0.2), r2 = r1 + Math.min(W, H) * 0.16 * a * 2; ctx.moveTo(cxp + Math.cos(ang) * r1, cy + Math.sin(ang) * r1); ctx.lineTo(cxp + Math.cos(ang) * r2, cy + Math.sin(ang) * r2); }
     ctx.stroke();
   }
- 
+
   function draw(p, t) {
     pal = palette(p); lit = sstep(0.08, 0.72, p);
     camZ = p * TRAVEL; camX = mx * 1.1 + Math.sin(p * 9) * 0.5; camY = 1.75 + Math.sin(t * 0.9) * 0.03;
@@ -282,10 +321,10 @@ Journey · JS
     ctx.clearRect(0, 0, W, H);
     drawSky(t, p); drawGround(); drawRoad(t); drawBank();
     for (const b of buildings) drawBuilding(b);
-    drawGates(t); drawCoins(t); drawDust(t); drawSpeed(vel);
+    drawBoards(t); drawGates(t); drawCoins(t); drawDust(t); drawSpeed(vel);
     ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
   }
- 
+
   /* ---------- story panels ---------- */
   function setScene(i) {
     if (i === scene) return; scene = i;
@@ -307,12 +346,12 @@ Journey · JS
     if (bar) bar.style.width = (p * 100).toFixed(1) + '%';
     root.classList.toggle('j-started', p > 0.025);
   }
- 
+
   /* ---------- loop ---------- */
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const dt = now - lastNow; lastNow = now;
-    if (!slow && dt > 0 && dt < 250) { ft.push(dt); if (ft.length === 50) { const avg = ft.reduce((a, b) => a + b, 0) / 50; if (avg > 30) { slow = true; resize(); } ft = []; } }
+    if (!slow && dt > 0 && dt < 250) { ft.push(dt); if (ft.length === 50) { const avg = ft.reduce((a, b) => a + b, 0) / 50; if (avg > 42) { slow = true; resize(); } ft = []; } }
     readScroll();
     const prev = prog; prog += (target - prog) * 0.045; if (Math.abs(target - prog) < 0.0003) prog = target;
     vel = lerp(vel, (prog - prev) * 60, 0.2); mx += (tmx - mx) * 0.06; my += (tmy - my) * 0.06;
@@ -320,9 +359,9 @@ Journey · JS
   }
   function start() { if (running) return; running = true; lastNow = performance.now(); raf = requestAnimationFrame(frame); }
   function stop() { running = false; cancelAnimationFrame(raf); }
- 
+
   /* ---------- boot ---------- */
-  if (RM) {
+  if (false) {
     root.classList.add('j-static');
     resize(); prog = 0.62; vel = 0; draw(0.62, 2); panels.forEach(p => p.classList.add('on'));
     if (scoreEl) { scoreEl.textContent = scoreEl.getAttribute('data-j-score') || '712'; barEls.forEach(b => { b.style.width = b.getAttribute('data-j-bar') + '%'; }); }
@@ -340,5 +379,3 @@ Journey · JS
   if ('IntersectionObserver' in window) new IntersectionObserver(es => { es[0].isIntersecting && !document.hidden ? start() : stop(); }, { threshold: 0 }).observe(root); else start();
   document.addEventListener('visibilitychange', () => { document.hidden ? stop() : (root.getBoundingClientRect().bottom > 0 && start()); });
 })();
- 
-Claude finished the response
